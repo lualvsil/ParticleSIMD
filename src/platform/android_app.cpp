@@ -2,8 +2,8 @@
 #include <android/native_window.h>
 #include <android/log.h>
 
-#include "renderer.hpp"
-#include "simulation.hpp"
+#include "renderer/renderer.hpp"
+#include "core/simulation.hpp"
 
 #include <print>
 #include <chrono>
