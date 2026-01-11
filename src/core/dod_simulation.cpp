@@ -21,11 +21,12 @@ Simulation::Simulation(int bodyCount, int width, int height)
 }
 
 void Simulation::update(float dt) {
-    constexpr float G = 250.0f;
+    constexpr float G = 10.0f;
+    constexpr float particleMass = 50.0f;
     constexpr float minNonZero = 0.0001f;
-
-    float32x4_t n05V = vdupq_n_f32(0.5f);
-    float32x4_t n15V = vdupq_n_f32(1.5f);
+    
+    // F = [G * 20] / r2
+    float32x4_t massTimesGV = vdupq_n_f32(particleMass*G);
     
     for (int i = 0; i < bodyCount; i++) {
         float xi = x[i];
@@ -40,7 +41,7 @@ void Simulation::update(float dt) {
         float32x4_t yiV = vdupq_n_f32(yi);
         
         for (int j = i+1; j < bodyCount; j+=4) {
-            // Load the next 4 particlea into vector register
+            // Load the next 4 particles into vector register
             float32x4_t xV = vld1q_f32(&x[j]);
             float32x4_t yV = vld1q_f32(&y[j]);
             
@@ -58,28 +59,12 @@ void Simulation::update(float dt) {
             
             // Approximate invR = 1 / sqrt(r2)
             float32x4_t invrV_ = vrsqrteq_f32(r2V);
-            float32x4_t invrV;
             // Newthon-Rapshon algorithm
-            {
-                // y1 = y0 * (1.5 - 0.5 * r2 * y0 * y0)
-                // y1 = y0 * (1.5 - 0.5 * r2 * [y0 * y0])
-                float32x4_t y0y0 = vmulq_f32(invrV_, invrV_);
-                // y1 = y0 * (1.5 - 0.5 * [r2 * ()])
-                float32x4_t r2y0y0 = vmulq_f32(r2V, y0y0);
-                // y1 = y0 * (1.5 - [0.5 * ()])
-                
-                float32x4_t n05r2y0y0 = vmulq_f32(r2y0y0, n05V);
-                // y1 = y0 * [1.5 - ()])
-                
-                float32x4_t n15sub = vsubq_f32(n15V, n05r2y0y0);
-                // y1 = y0 * ()
-                invrV = vmulq_f32(n15sub, invrV_);
-            }
+            float32x4_t step = vrsqrtsq_f32(r2V, vmulq_f32(invrV_, invrV_));
+            float32x4_t invrV = vmulq_f32(invrV_, step);
             
-            // F = [G * 20] / r2
-            float32x4_t resultV = vdupq_n_f32(20.0f*G);
-            // F = [() / r2]
-            float32x4_t forceV = vdivq_f32(resultV, r2V);
+            // F = [(G*mass) / r2]
+            float32x4_t forceV = vdivq_f32(massTimesGV, r2V);
             
             // finv = F * invR
             float32x4_t finvV_ = vmulq_f32(forceV, invrV);

@@ -1,6 +1,7 @@
 # Xmake cache
 .xmake/
 build/
+android/debug.jks
 
 # MacOS Cache
 .DS_Store
