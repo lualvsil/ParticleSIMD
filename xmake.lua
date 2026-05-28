@@ -5,6 +5,11 @@ set_languages("c++23")
 target("core")
     set_kind("static")
     add_cxflags("-fPIC")
+    if is_mode("release") then
+        set_optimize("aggressive")
+        add_cxflags("-march=armv8-a+simd")
+        -- add_cxflags("-Rpass=regalloc", "-Rpass-missed=regalloc")
+    end
     add_files("src/core/*.cpp")
     add_files("src/renderer/*.cpp")
     add_includedirs("src/", {public=true})

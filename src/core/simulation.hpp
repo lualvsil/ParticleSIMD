@@ -5,7 +5,7 @@
 #include <memory>
 #include "core/jobsystem.hpp"
 
-#define NUM_PARTICLES 3400
+#define NUM_PARTICLES 3584*2
 
 struct SimulationJobData {
     float* x;

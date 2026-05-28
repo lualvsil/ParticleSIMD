@@ -19,6 +19,7 @@ JobSystem::JobSystem(int numThreads)
                         return !running.load(std::memory_order_acquire) ||
                                 hasWork.load(std::memory_order_acquire);
                     });
+                    std::atomic_thread_fence(std::memory_order_acquire);
                     if (!running.load(std::memory_order_acquire))
                         return;
                 }
@@ -28,19 +29,18 @@ JobSystem::JobSystem(int numThreads)
                     if (jobIndex >= totalJobs)
                         break;
                     
-                    if (jobIndex < totalJobs) {
-                        int begin = jobIndex * chunkSize;
-                        int end = begin + chunkSize;
-                        if (fn != nullptr)
-                            fn(data, begin, end);
-                        
-                        // jobsRemaining is only used as a completion counter.
-                        if (jobsRemaining.fetch_sub(1, std::memory_order_relaxed) == 1) {
-                            // Last job clears hasWork to prevent workers from spinning
-                            // until the next dispatch.
-                            cvEnd.notify_all();
-                            hasWork.store(false, std::memory_order_release);
-                        }
+                    int begin = jobIndex * chunkSize;
+                    int end = begin + chunkSize;
+                    
+                    assert(fn != nullptr);
+                    fn(data, begin, end);
+                    
+                    // jobsRemaining is only used as a completion counter.
+                    if (jobsRemaining.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                        // Last job clears hasWork to prevent workers from spinning
+                        // until the next dispatch.
+                        hasWork.store(false, std::memory_order_release);
+                        cvEnd.notify_all();
                     }
                 }
             }
@@ -65,9 +65,9 @@ void JobSystem::set_data(void* data, int blockSize, int chunkSize) {
 void JobSystem::set_executor(JobFn fn) { this->fn = fn; }
 
 void JobSystem::dispatch() {
-    nextJob = 0;
+    nextJob.store(0, std::memory_order_relaxed);
+    jobsRemaining.store(totalJobs, std::memory_order_relaxed);
     hasWork.store(true, std::memory_order_release);
-    jobsRemaining = totalJobs;
     cv.notify_all();
 }
 

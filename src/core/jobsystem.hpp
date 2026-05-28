@@ -24,6 +24,7 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <cassert>
 #include <condition_variable>
 
 using JobFn = void(*)(void* data, int begin, int end);

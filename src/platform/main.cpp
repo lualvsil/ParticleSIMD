@@ -142,7 +142,7 @@ int main() {
             if (counter >= 1.0f) {
                 fps = frameCount / counter;
                 std::println("{:.0f}", fps);
-                counter = 0;
+                counter -= 1;
                 frameCount = 0;
             }
         }
